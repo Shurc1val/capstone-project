@@ -1,5 +1,12 @@
 from random import randint
 
+def validate_user_input(msg, options):
+    while True:
+        user_input = input(msg)
+        if user_input in options:
+            return user_input
+        print("Not a valid entry!\n")
+
 def roll_die():
     return randint(1,6)
 
@@ -70,11 +77,11 @@ possible_colours = ["Blue","Green","Red","White"]
 players = []
 turn_counter = 1
 
-num_players = int(input("Please enter the number of players: "))
-num_tokens = int(input("How many tokens should each player have? "))
+num_players = int(validate_user_input("Please enter the number of players (2-4): ", "234"))
+num_tokens = int(validate_user_input("How many tokens should each player have? (1-3) ", "123"))
 
 for i in range(1,num_players + 1):
-    player_colour = input(f"Player {i}, what colour do you want to be? ({', '.join(possible_colours)}) ")
+    player_colour = validate_user_input(f"Player {i}, what colour do you want to be? ({', '.join(possible_colours)}) ", possible_colours)
     players.append(player_colour)
     possible_colours.remove(player_colour)
     for i in range(num_tokens):
@@ -93,7 +100,6 @@ while not max([finished_tokens.count(colour) for colour in players]) == num_toke
             break
         print("Not a valid move")
     print_board(board)
-    print(board)
     turn_counter = (turn_counter + 1) % num_players
 
 
