@@ -1,4 +1,6 @@
-#!/Users/hughmorris/Documents/Prework/capstone-project/venv/bin/python3.11
+#!/bin/sh
+'''exec' "/Users/hughmorris/Documents/Sigma Labs/Prework/capstone-project/venv/bin/python3.11" "$0" "$@"
+' '''
 # -*- coding: utf-8 -*-
 import re
 import sys
