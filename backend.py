@@ -10,7 +10,7 @@ from trs_graphics import *
 def main():
 
     finished_tokens = []
-    possible_colours = ["Blue", "Green", "Red", "Purple"]
+    possible_colours = ["Blue", "Green", "Red", "Purple", "Gold"]
     players = []
     turn_counter = 1
 

@@ -36,7 +36,7 @@ def new_game_pop_up_players_and_tokens(window, user_options: dict):
 
     num_player_menu = StringVar()
     num_player_menu.set("2")
-    num_player_drop = OptionMenu(pop_up, num_player_menu, "1", "2", "3", "4")
+    num_player_drop = OptionMenu(pop_up, num_player_menu, "1", "2", "3", "4", "5")
     num_player_drop.config(bg="white", fg="black")
     num_player_drop.place(x=200, y=10)
 
@@ -48,9 +48,6 @@ def new_game_pop_up_players_and_tokens(window, user_options: dict):
     num_counters_drop = OptionMenu(pop_up, num_counters_menu, "1", "2", "3")
     num_counters_drop.config(bg="white", fg="black")
     num_counters_drop.place(x=200, y=40)
-
-    """colour_options = 
-    colour_menu = Listbox(pop_up, selectmode=MULTIPLE, )"""
 
     choose_colours_button = Button(pop_up, bg="white", fg="white",
                                    text="Choose Colours", command=lambda: get_num_players_and_tokens_selection(pop_up, num_player_menu, num_counters_menu, user_options))
@@ -76,7 +73,7 @@ def check_win(finished_tokens: list, current_player: str, number_of_tokens: int)
 
 
 def new_game_pop_up_colours(window, game_settings: dict, colour_options: list[str]):
-    number_words = {1: "one", 2: "two", 3: "three", 4: "four"}
+    number_words = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
 
     pop_up = Toplevel(window, bg="white")
     pop_up.geometry("260x110")
