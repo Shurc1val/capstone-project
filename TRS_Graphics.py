@@ -3,7 +3,7 @@ from PIL import Image, ImageTk
 from tkinter.font import Font
 import math as m
 import random as r
-from TRS_backend import *
+import backend
 
 
 CANVAS = {'height': 750, 'width': 650}
@@ -117,9 +117,11 @@ def limit_colour_selection(colour_menu: Listbox, previous_selection: list[int], 
 
 
 def counter_clicked_on(canvas: Canvas, player_turn_label: Label, game_settings, *args):
-    counter_selected = list(canvas.gettags("current"))
-    colour = counter_selected[0]
-    current_index = int(counter_selected[2])
+    counter_id = list(canvas.find_withtag("current"))[0]
+    print("a", counter_id)
+    colour = get_counter_colour_from_id(canvas, counter_id)
+    current_index = backend.find_counter_on_board(counter_id, game_settings['board'])
+    print(current_index)
     if not check_if_moves_exist(canvas, game_settings['board'], game_settings['die_roll'], game_settings['current_player'], game_settings['total_number_of_counters']):
         pop_up_message(canvas, title="OH DEAR",
                        message="No moves available - sorry", button_text="Okay")
@@ -155,15 +157,10 @@ def pop_up_message(canvas: Canvas, title: str, message: str, button_text: str):
 
 
 def validate_move(canvas: Canvas, current_index, board: list, die_roll, colour, total_number_of_counters):
-    if [list(canvas.gettags(counter))[0] for counter in board[current_index] if counter != None].count(colour) == 0:
-        print("apple", [list(canvas.gettags(counter))[0]
-                        for counter in board[current_index] if counter != None])
-        print(board[current_index])
-        print([list(canvas.gettags(counter))[0]
-              for counter in board[current_index]])
+    if get_number_of_colour_on_square(canvas, board, current_index) == 0:
         return False
     for place in board[current_index+1:current_index+die_roll]:
-        if place.count(None) < total_number_of_counters-1 and [list(canvas.gettags(counter))[0] for counter in place if counter != None].count(colour) != len(place)-place.count(None):
+        if place.count(None) < total_number_of_counters-1 and get_number_of_colour_on_square(canvas, board, current_index, colour) != len(place)-place.count(None):
             print("banana", [list(canvas.gettags(counter))[0]
                   for counter in place if counter != None], place)
             return False
@@ -173,8 +170,6 @@ def validate_move(canvas: Canvas, current_index, board: list, die_roll, colour, 
 
 
 def move_piece(canvas: Canvas, board, counter_ID, current_index, game_settings):
-    print(counter_ID)
-    print(current_index, board[current_index])
     colour = game_settings['current_player']
     remove_from_board(board, current_index, counter_ID)
     if current_index + game_settings['die_roll'] == 28:
@@ -244,12 +239,9 @@ def get_position_in_square(counter_number, total_number_of_counters):
     return x, y
 
 
-def check_if_moves_exist(canvas: Canvas, board: list, die_roll, colour, total_number_of_counters):
+def check_if_moves_exist(canvas: Canvas, board: list[list[int]], die_roll, colour, total_number_of_counters):
     for index in range(len(board)):
-        if [list(canvas.gettags(counter))[0] for counter in board[index] if counter != None].count(colour) > 0:
-            print("cheesecake")
-            print([list(canvas.gettags(counter))[0]
-                   for counter in board[index] if counter != None], board[index])
+        if get_number_of_colour_on_square(canvas, board, index, colour) > 0:
             if validate_move(canvas, index, board, die_roll, colour, total_number_of_counters):
                 return True
     return False
@@ -345,11 +337,10 @@ def draw_board(window: Tk, game_settings: dict):
             x, y = map(lambda i, j: i + j, board_number_to_position(
                 0), get_position_in_square(counter_number=count, total_number_of_counters=game_settings['total_number_of_counters']))
             game_settings['board'][0].append(canvas.create_oval(
-                x, y, x+COUNTER_DIAMETER, y+COUNTER_DIAMETER, fill=game_settings['colours'][i].lower(), tags=f"{game_settings['colours'][i]} {j} {0}"))
+                x, y, x+COUNTER_DIAMETER, y+COUNTER_DIAMETER, fill=game_settings['colours'][i].lower(), tags=f"{game_settings['colours'][i]} {j}"))
             canvas.tag_bind(game_settings['board'][0][-1],
                             "<Button-1>", lambda *args: counter_clicked_on(canvas, player_turn_label, game_settings, * args))
             count += 1
-    print(game_settings['board'][0])
 
     roman_mosaic = Image.open(
         "/Users/hughmorris/Documents/Prework/capstone-project/images/bc.png")
@@ -417,3 +408,14 @@ def print_player_turn():
         family="Times New Roman", size=20), background="black", foreground="white")
     current_player_turn.place(x=GAP_FROM_EDGE + BOARD_SQUARE['spacer'], y=2 *
                               GAP_FROM_TOP + 8*(BOARD_SQUARE['spacer']+BOARD_SQUARE['width']), anchor=W)
+
+
+def get_counter_colour_from_id(canvas: Canvas, counter_id: int) -> str:
+    return list(canvas.gettags(counter_id))[0]
+
+
+def get_number_of_colour_on_square(canvas: Canvas, board: list[list[int]], square_index: int, colour: str = "any") -> int:
+    counter_colours = [get_counter_colour_from_id(counter) for counter in board[index] if counter]
+    if colour == 'any':
+        return counter_colours.count()
+    return counter_colours.count(colour)
