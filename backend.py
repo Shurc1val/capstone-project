@@ -44,7 +44,7 @@ def main():
     trs_graphics.new_game_pop_up_players_and_tokens(window, game)
 
     trs_graphics.new_game_pop_up_colours(window, game, players)
-
+    
     trs_graphics.draw_board(window, game, players)
 
     window.mainloop()

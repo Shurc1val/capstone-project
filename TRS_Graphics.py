@@ -134,7 +134,7 @@ def counter_clicked_on(canvas: Canvas, player_turn_label: Label, game: Game, pla
     counter_id = list(canvas.find_withtag("current"))[0]
     current_index = backend.find_counter_on_board(counter_id, game.board)
     
-    if players[0] != get_counter_colour_from_id(canvas, counter_id):
+    if players[0].colour != get_counter_colour_from_id(canvas, counter_id):
         # Player clicked on wrong counter colour
         return None
     if players[0].die_roll == 0:
@@ -268,13 +268,13 @@ def get_position_in_square(counter_number, total_number_of_counters):
     return x, y
 
 
-def check_if_moves_exist(canvas: Canvas, board: list[list[int]], die_roll: int, colour: str, total_number_of_counters: int) -> bool:
+def check_if_moves_exist(canvas: Canvas, game: Game, current_player: Player) -> bool:
     """
     Function to check if there is a move possible for any counter of a given colour on the board.
     """
-    for index in range(len(board)):
-        if get_number_of_colour_on_square(canvas, board[index], colour) > 0:
-            if validate_move(canvas, index, board, die_roll, colour, total_number_of_counters):
+    for index in range(len(game.board)):
+        if get_number_of_colour_on_square(canvas, game.board[index], current_player.colour) > 0:
+            if validate_move(canvas, index, game, current_player):
                 return True
     return False
 
@@ -358,9 +358,9 @@ def draw_board(window: Tk, game: Game, players: list[Player]):
     players = players[::-1]
 
     # Draw player turn label
-    player_turn_label_colour = Label(canvas, text = players[0].title(),
+    player_turn_label_colour = Label(canvas, text = players[0].colour.title(),
                                      font = Font(family="Times New Roman", size=25),
-                                     background = "black", foreground = players[0], highlightthickness = 0)
+                                     background = "black", foreground = players[0].colour, highlightthickness = 0)
     player_turn_label_colour.place(x=GAP_FROM_EDGE + BOARD_SQUARE['spacer'] + 100, y=2 *
                             GAP_FROM_TOP + 8*(BOARD_SQUARE['spacer']+BOARD_SQUARE['width']), anchor=W)
 
@@ -402,7 +402,7 @@ def draw_board(window: Tk, game: Game, players: list[Player]):
         BOARD_SQUARE['spacer']+BOARD_SQUARE['width']) + BOARD_SQUARE['width']/2 + 3*BOARD_SQUARE['spacer'], anchor=W, window=quit_button, width=2 * BOARD_SQUARE['width'] + BOARD_SQUARE['spacer'], height=BOARD_SQUARE['width']/2)
 
     roll_die_button = Button(canvas, bg="white", fg="black",
-                             text="Roll Die", command=lambda: roll_die_animation(canvas, 10, game_settings, player_turn_label_colour))
+                             text="Roll Die", command=lambda: roll_die_animation(canvas, 10, game, players, player_turn_label_colour))
     roll_die_button_window = canvas.create_window(GAP_FROM_EDGE + 2*BOARD_SQUARE['spacer'], 2 *
                                                   GAP_FROM_TOP + 16*BOARD_SQUARE['spacer'] + 8*BOARD_SQUARE['width'], anchor=W, window=roll_die_button, width=2 * BOARD_SQUARE['width'] + BOARD_SQUARE['spacer'], height=BOARD_SQUARE['width']/2)
 
@@ -419,7 +419,7 @@ def next_player_turn(canvas: Canvas, player_turn_label: Label, players: list[Pla
     """Function to change the current player turn to the next one in the player list."""
     players[0].die_roll = 0  # Reset player's die roll
     players.append(players.pop(0))
-    display_player_turn(canvas, player_turn_label, players[0])
+    display_player_turn(canvas, player_turn_label, players[0].colour)
 
 
 def display_player_turn(canvas: Canvas, player_turn_label: Label, player_colour: str):
@@ -449,8 +449,7 @@ def roll_die_animation(canvas: Canvas, time_period_ms: int, game: Game, players:
                                                 players, player_turn_label))
     else:
         players[0].die_roll = die_number
-        if not check_if_moves_exist(canvas, game.board, players[0].die_roll, players[0].colour,
-                                    game.total_number_of_counters):
+        if not check_if_moves_exist(canvas, game, players[0]):
             # No moves exist
             pop_up_message(title="OH DEAR",
                         message="No moves available - sorry", button_text="Okay")
