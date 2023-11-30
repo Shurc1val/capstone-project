@@ -7,7 +7,9 @@ from PIL import Image, ImageTk
 from tkinter.font import Font
 import math as m
 import random as r
+
 import backend
+from backend import Player, Game, POSSIBLE_COLOURS
 
 
 CANVAS = {'height': 750, 'width': 650}
@@ -20,14 +22,19 @@ GAP_FROM_TOP = GAP_FROM_EDGE
 COUNTER_DIAMETER = 20
 
 
-def get_num_players_and_tokens_selection(pop_up: Toplevel, num_player_menu: StringVar, num_counters_menu: StringVar, game_settings):
-    game_settings['num_players'] = int(num_player_menu.get())
-    game_settings['num_counters'] = int(num_counters_menu.get())
+def get_num_players_and_tokens_selection(pop_up: Toplevel, num_player_menu: StringVar, num_counters_menu: StringVar, game: Game):
+    """Function to assign users' choice of player and counter number to board settings."""
+    game.number_of_players = int(num_player_menu.get())
+    game.counters_per_player = int(num_counters_menu.get())
     pop_up.destroy()
     pop_up.quit()
 
 
-def new_game_pop_up_players_and_tokens(window, user_options: dict):
+def new_game_pop_up_players_and_tokens(window, game: Game):
+    """
+    Displays new game pop up window to choose number of players, tokens, and to choose colours.
+    """
+
     pop_up = Toplevel(window, bg="white")
     pop_up.geometry("260x110")
     pop_up.title("New game")
@@ -52,7 +59,7 @@ def new_game_pop_up_players_and_tokens(window, user_options: dict):
     num_counters_drop.place(x=200, y=40)
 
     choose_colours_button = Button(pop_up, bg="white", fg="white",
-                                   text="Choose Colours", command=lambda: get_num_players_and_tokens_selection(pop_up, num_player_menu, num_counters_menu, user_options))
+                                   text="Choose Colours", command=lambda: get_num_players_and_tokens_selection(pop_up, num_player_menu, num_counters_menu, game))
     choose_colours_button.config(
         bg="red", fg="black", borderwidth=5, highlightbackground="white")
     choose_colours_button.place(x=120, y=68)
@@ -60,43 +67,47 @@ def new_game_pop_up_players_and_tokens(window, user_options: dict):
     window.mainloop()
 
 
-def get_colour_selection(pop_up: Toplevel, colours: list[str], colour_menu: Listbox):
+def get_colour_selection(pop_up: Toplevel, players: list[Player], colour_menu: Listbox):
+    """Function to declare the players of the game by user's colour choice."""
     for i in colour_menu.curselection():
-        colours.append(colour_menu.get(i))
+        players.append(Player(colour_menu.get(i)))
     pop_up.destroy()
     pop_up.quit()
 
 
-def check_win(finished_tokens: list, current_player: str, number_of_tokens: int) -> bool:
+def check_win(finished_tokens: list, number_of_tokens: int, current_player: str) -> bool:
     """Function to check if the given player has won the game."""
     if finished_tokens.count(current_player) == number_of_tokens:
         return True
     return False
 
 
-def new_game_pop_up_colours(window, game_settings: dict, colour_options: list[str]):
+def new_game_pop_up_colours(window, game: Game, players: list[Player]):
+    """Function to allow player to select the colours for the game."""
+
     number_words = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
 
     pop_up = Toplevel(window, bg="white")
     pop_up.geometry("260x110")
     pop_up.title("New game")
 
-    Label(pop_up, text=f"Please choose {number_words[game_settings['num_players']]} colours:", font=(
+    Label(pop_up, text=f"Please choose {number_words[game.number_of_players]} colours:", font=(
         'Times'), bg="white", fg="black").place(x=10, y=10)
 
     colour_menu = Listbox(pop_up, selectmode=MULTIPLE,
-                          width=10, height=len(colour_options))
-    for colour in colour_options:
+                          width=10, height=len(POSSIBLE_COLOURS))
+    
+    for colour in POSSIBLE_COLOURS:
         colour_menu.insert(END, colour)
 
     selected_button_indices = []
     colour_menu.config(bg="white", fg="black")
     colour_menu.place(x=160, y=12)
     colour_menu.bind("<<ListboxSelect>>", lambda *args: limit_colour_selection(
-        colour_menu, selected_button_indices, game_settings['num_players']))
+        colour_menu, selected_button_indices, game.number_of_players))
 
     play_game_button = Button(pop_up, bg="white", fg="white",
-                              text="Play Game", command=lambda: get_colour_selection(pop_up, game_settings['colours'], colour_menu))
+                              text="Play Game", command=lambda: get_colour_selection(pop_up, players, colour_menu))
     play_game_button.config(
         bg="red", fg="black", borderwidth=5, highlightbackground="white")
     play_game_button.place(x=25, y=40)
@@ -118,28 +129,26 @@ def limit_colour_selection(colour_menu: Listbox, previous_selection: list[int], 
         previous_selection.pop()
 
 
-def counter_clicked_on(canvas: Canvas, player_turn_label: Label, game_settings, *args):
+def counter_clicked_on(canvas: Canvas, player_turn_label: Label, game: Game, players: list[Player], *args):
     """Function called when a counter is clicked on."""
     counter_id = list(canvas.find_withtag("current"))[0]
-    colour = get_counter_colour_from_id(canvas, counter_id)
-    current_index = backend.find_counter_on_board(counter_id, game_settings['board'])
+    current_index = backend.find_counter_on_board(counter_id, game.board)
     
-    if game_settings['current_player'] != colour:
+    if players[0] != get_counter_colour_from_id(canvas, counter_id):
         # Player clicked on wrong counter colour
         return None
-    if game_settings['die_roll'] == 0:
+    if players[0].die_roll == 0:
         # Die has not yet been rolled
         return None
     
-    if validate_move(canvas, current_index, game_settings['board'], game_settings['die_roll'], colour, game_settings['total_number_of_counters']):
+    if validate_move(canvas, current_index, game, players[0]):
         # Move is valid
-        move_piece(canvas, game_settings['board'],
-                   list(canvas.find_withtag("current"))[0], current_index, game_settings)
-        game_settings['die_roll'] = 0  # Reset die roll
-        if check_win(game_settings['finished_tokens'], game_settings['current_player'], game_settings['num_counters']):
+        move_piece(canvas, game, players[0],
+                   list(canvas.find_withtag("current"))[0], current_index)
+        if check_win(game.finished_tokens, game.counters_per_player, players[0].colour):
             pop_up_message(title="Winner!",
-                           message=f"Congratulations {game_settings['current_player']} player,\nyou've won!!!", button_text="Okay")
-        next_player_turn(canvas, player_turn_label, game_settings)
+                           message=f"Congratulations {players[0].colour} player,\nyou've won!!!", button_text="Okay")
+        next_player_turn(canvas, player_turn_label, players)
 
 
 def pop_up_message(title: str, message: str, button_text: str):
@@ -153,71 +162,74 @@ def pop_up_message(title: str, message: str, button_text: str):
     okay_button.pack(side='bottom')
 
 
-def validate_move(canvas: Canvas, current_index: int, board: list, die_roll: int, colour: str, total_number_of_counters: int) -> bool:
+def validate_move(canvas: Canvas, current_index: int, game: Game, current_player: Player) -> bool:
     """
     Function to validate a given move for a given counter of a given colour on a given square of
     the given board.
     """
-    if (current_index == 28) or (get_number_of_colour_on_square(canvas, board[current_index], colour) == 0):
+    if (current_index == 28) or (get_number_of_colour_on_square(canvas, game.board[current_index], current_player.colour) == 0):
     # Piece licked is off the board or pieces of that colour in the square given
         return False
     
-    for place in board[current_index+1:current_index+die_roll]:
+    for place in game.board[(current_index + 1):(current_index + current_player.die_roll)]:
         # Checks every place from one ahead of the current to where the die roll would land
-        if (place.count(None) < (total_number_of_counters - 1)) and (get_number_of_colour_on_square(canvas, place, colour) != len(place)-place.count(None)):
+        if (place.count(None) < (game.total_number_of_counters - 1)) and (get_number_of_colour_on_square(canvas, place, current_player.colour) != len(place)-place.count(None)):
         # Checks there are 2+ counters in square not all belonging to current player
             return False
         
-    if current_index + die_roll > 28:
+    if current_index + current_player.die_roll > 28:
     # Checks if roll would keep counter within board.
         return False
     return True
 
 
-def move_piece(canvas: Canvas, board, counter_ID, current_index, game_settings):
+def move_piece(canvas: Canvas, game: Game, current_player: Player, counter_ID: int, current_index: int):
     """
-    Moves piece with the given counter id from the current index by the game settings' die roll.
+    Moves piece with the given counter id from the current index by the die roll.
     """
-    colour = game_settings['current_player']
-    remove_from_board(board, current_index, counter_ID)
+    remove_from_board(game.board, current_index, counter_ID)
 
-    if current_index + game_settings['die_roll'] == 28:
+    if current_index + current_player.die_roll == 28:
         # Die roll takes the piece off the board
-        game_settings['finished_tokens'].append(game_settings['current_player'])
-        x, y = map(lambda i, j: i + j,
-                   board_number_to_position(current_index + game_settings['die_roll']),
-                   get_position_in_square(counter_number=len(game_settings['finished_tokens']),
-                                          total_number_of_counters=\
-                                            game_settings['total_number_of_counters']))
+        game.finished_tokens.append(current_player.colour)
+        x, y = map(lambda a, b: a + b,
+                   board_number_to_position(current_index + current_player.die_roll),
+                   get_position_in_square(counter_number = len(game.finished_tokens),
+                                          total_number_of_counters = \
+                                            game.total_number_of_counters))
         canvas.moveto(counter_ID, x, y)
         counter_tags = canvas.gettags(counter_ID)
         canvas.itemconfig(counter_ID,
                           tags=f"{counter_tags[0]} {counter_tags[1]} " + \
-                            f"{current_index + game_settings['die_roll']}")
+                            f"{current_index + current_player.die_roll}")
     else:
-        index_in_square = add_to_board(board,
-                                       current_index + game_settings['die_roll'],
+        index_in_square = add_to_board(game.board,
+                                       current_index + current_player.die_roll,
                                        counter_ID)
-        x, y = map(lambda i, j: i + j, board_number_to_position(current_index + game_settings['die_roll']), get_position_in_square(
-            counter_number=index_in_square, total_number_of_counters=game_settings['total_number_of_counters']))
+        x, y = map(lambda i, j: i + j, 
+                   board_number_to_position(current_index + current_player.die_roll), 
+                   get_position_in_square(counter_number = index_in_square,
+                                          total_number_of_counters = game.total_number_of_counters))
         canvas.moveto(counter_ID, x, y)
         counter_tags = canvas.gettags(counter_ID)
         canvas.itemconfig(counter_ID, tags=f"{counter_tags[0]} {counter_tags[1]} " + \
-                          str({current_index + game_settings['die_roll']}))
+                          str({current_index + current_player.die_roll}))
 
     # Send back overtaken pieces:
-    for i in range(current_index+1, current_index+game_settings['die_roll']):
-        if board[i] and i not in (7, 14, 21):
+    for i in range(current_index+1, current_index+current_player.die_roll):
+        if game.board[i] and i not in (7, 14, 21):
             # If there is a counter in the square and the square is not a safety
-            for piece in board[i]:
+            for piece in game.board[i]:
                 # For each piece in the square
                 if piece:
-                    if list(canvas.gettags(piece))[0] != colour:
+                    if list(canvas.gettags(piece))[0] != current_player.colour:
                         # If the piece is not the same colour as the current player
-                        remove_from_board(board, i, piece)
-                        index_in_square = add_to_board(board, 0, piece)
-                        x, y = map(lambda i, j: i + j, board_number_to_position(0), get_position_in_square(
-                            counter_number=index_in_square, total_number_of_counters=game_settings['total_number_of_counters']))
+                        remove_from_board(game.board, i, piece)
+                        index_in_square = add_to_board(game.board, 0, piece)
+                        x, y = map(lambda a, b: a + b,
+                                   board_number_to_position(0),
+                                   get_position_in_square(counter_number = index_in_square,
+                                                          total_number_of_counters = game.total_number_of_counters))
                         canvas.moveto(piece, x, y)
                         counter_tags = canvas.gettags(piece)
                         canvas.itemconfig(
@@ -302,7 +314,7 @@ def board_number_to_position(place_index: int) -> int:
     return x_coord, y_coord
 
 
-def draw_board(window: Tk, game_settings: dict):
+def draw_board(window: Tk, game: Game, players: list[Player]):
 
     canvas = Canvas(window, width=CANVAS['width'],
                     height=CANVAS['height'], background="black")
@@ -343,34 +355,31 @@ def draw_board(window: Tk, game_settings: dict):
     player_turn_label_text.place(x=GAP_FROM_EDGE + BOARD_SQUARE['spacer'], y=2 *
                             GAP_FROM_TOP + 8*(BOARD_SQUARE['spacer']+BOARD_SQUARE['width']), anchor=W)
 
-    game_settings['colours'] = game_settings['colours'][::-1]
-    game_settings['current_player'] = game_settings['colours'].pop(0)
-    game_settings['colours'].append(game_settings['current_player'])
+    players = players[::-1]
 
     # Draw player turn label
-    player_turn_label_colour = Label(canvas, text=game_settings['current_player'].title(), font=Font(
-        family="Times New Roman", size=25), background="black", foreground=game_settings['current_player'], highlightthickness=0)
+    player_turn_label_colour = Label(canvas, text = players[0].title(),
+                                     font = Font(family="Times New Roman", size=25),
+                                     background = "black", foreground = players[0], highlightthickness = 0)
     player_turn_label_colour.place(x=GAP_FROM_EDGE + BOARD_SQUARE['spacer'] + 100, y=2 *
                             GAP_FROM_TOP + 8*(BOARD_SQUARE['spacer']+BOARD_SQUARE['width']), anchor=W)
 
     count = 0
-    game_settings['total_number_of_counters'] = len(
-        game_settings['colours'])*game_settings['num_counters']
     
     # Gives each board square 6 'None's as its pieces
-    for i in range(1, len(game_settings['board'])):
-        game_settings['board'][i] = [None]*game_settings['total_number_of_counters']
+    for i in range(1, len(game.board)):
+        game.board[i] = [None]*game.total_number_of_counters
 
     # Loops over each colour
-    for i in range(len(game_settings['colours'])):
+    for player in players:
         # Loops over each counter
-        for j in range(game_settings['num_counters']):
-            x, y = map(lambda i, j: i + j, board_number_to_position(
-                0), get_position_in_square(counter_number=count, total_number_of_counters=game_settings['total_number_of_counters']))
-            game_settings['board'][0].append(canvas.create_oval(
-                x, y, x+COUNTER_DIAMETER, y+COUNTER_DIAMETER, fill=game_settings['colours'][i].lower(), tags=f"{game_settings['colours'][i]} {j}"))
-            canvas.tag_bind(game_settings['board'][0][-1],
-                            "<Button-1>", lambda *args: counter_clicked_on(canvas, player_turn_label_colour, game_settings, * args))
+        for i in range(game.counters_per_player):
+            x, y = map(lambda a, b: a + b, board_number_to_position(0),
+                       get_position_in_square(counter_number=count, total_number_of_counters=game.total_number_of_counters))
+            game.board[0].append(canvas.create_oval(x, y, x+COUNTER_DIAMETER, y+COUNTER_DIAMETER,
+                                                    fill=player.colour.lower(), tags=f"{player.colour} {i}"))
+            canvas.tag_bind(game.board[0][-1], "<Button-1>",
+                            lambda *args: counter_clicked_on(canvas, player_turn_label_colour, game, players, *args))
             count += 1
 
     roman_mosaic = Image.open(os.path.join("images", "bc.png"))
@@ -406,12 +415,11 @@ def start_new_game(window: Tk):
     backend.main()
 
 
-def next_player_turn(canvas: Canvas, player_turn_label: Label, game_settings: dict):
+def next_player_turn(canvas: Canvas, player_turn_label: Label, players: list[Player]):
     """Function to change the current player turn to the next one in the player list."""
-    game_settings['current_player'] = game_settings['colours'].pop(0)
-    game_settings['colours'].append(game_settings['current_player'])
-    display_player_turn(canvas, player_turn_label,
-                        game_settings['current_player'])
+    players[0].die_roll = 0  # Reset player's die roll
+    players.append(players.pop(0))
+    display_player_turn(canvas, player_turn_label, players[0])
 
 
 def display_player_turn(canvas: Canvas, player_turn_label: Label, player_colour: str):
@@ -420,9 +428,14 @@ def display_player_turn(canvas: Canvas, player_turn_label: Label, player_colour:
     canvas.update()
 
 
-def roll_die_animation(canvas: Canvas, time_period_ms: int, game_settings: dict, player_turn_label: Label):
-    if game_settings['die_roll'] != 0 and time_period_ms == 10:
+def roll_die_animation(canvas: Canvas, time_period_ms: int, game: Game, players: list[Player], player_turn_label: Label):
+    """
+    Recursive function to show a rolling die and pick random number between 1 and 6 when roll die
+    button is clicked on.
+    """
+    if players[0].die_roll and time_period_ms == 10:
         return None
+    
     die_number = r.randint(1, 6)
     die_image_raw = Image.open(os.path.join("images", "die_faces", f"die_face_{die_number}.png"))
     resized_die_image = die_image_raw.resize((80, 80))
@@ -431,16 +444,18 @@ def roll_die_animation(canvas: Canvas, time_period_ms: int, game_settings: dict,
     die = canvas.create_image(250, 685, image=die_image)
     canvas.update()
     if time_period_ms < 150:
-        canvas.after(time_period_ms, lambda: roll_die_animation(
-            canvas, int(1.2*time_period_ms), game_settings, player_turn_label))
+        canvas.after(time_period_ms,
+                     lambda: roll_die_animation(canvas, int(1.2*time_period_ms), game, 
+                                                players, player_turn_label))
     else:
-        game_settings['die_roll'] = die_number
-        if not check_if_moves_exist(canvas, game_settings['board'], game_settings['die_roll'], game_settings['current_player'], game_settings['total_number_of_counters']):
+        players[0].die_roll = die_number
+        if not check_if_moves_exist(canvas, game.board, players[0].die_roll, players[0].colour,
+                                    game.total_number_of_counters):
             # No moves exist
             pop_up_message(title="OH DEAR",
                         message="No moves available - sorry", button_text="Okay")
-            next_player_turn(canvas, player_turn_label, game_settings)
-            game_settings['die_roll'] = 0
+            next_player_turn(canvas, player_turn_label, players)
+            players[0].die_roll = 0
 
 
 def player_turn():
