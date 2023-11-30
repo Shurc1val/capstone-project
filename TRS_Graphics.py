@@ -1,5 +1,6 @@
 
 import os
+from time import sleep
 
 from tkinter import *
 from PIL import Image, ImageTk
@@ -30,6 +31,7 @@ def new_game_pop_up_players_and_tokens(window, user_options: dict):
     pop_up = Toplevel(window, bg="white")
     pop_up.geometry("260x110")
     pop_up.title("New game")
+    pop_up.attributes('-topmost', 'true')
 
     Label(pop_up, text="Please enter the number of players: ", font=(
         'Times'), bg="white", fg="black").place(x=10, y=10)
@@ -380,7 +382,8 @@ def draw_board(window: Tk, game_settings: dict):
     board_centre = canvas.create_image(canvas.winfo_reqwidth()/2,
                                        canvas.winfo_reqwidth()/2, anchor=CENTER, image=board_centre_image)
 
-    new_game_button = Button(canvas, bg="blue", fg="blue", text="New Game")
+    new_game_button = Button(canvas, bg="blue", fg="blue",
+                             text="New Game", command=lambda: start_new_game(window))
     new_game_button_window = canvas.create_window(GAP_FROM_EDGE + 6*(BOARD_SQUARE['spacer']+BOARD_SQUARE['width']), 2*GAP_FROM_TOP + 8*(
         BOARD_SQUARE['spacer']+BOARD_SQUARE['width']) + BOARD_SQUARE["spacer"], anchor=W, window=new_game_button, width=2 * BOARD_SQUARE['width'] + BOARD_SQUARE['spacer'], height=BOARD_SQUARE['width']/2)
 
@@ -395,6 +398,12 @@ def draw_board(window: Tk, game_settings: dict):
                                                   GAP_FROM_TOP + 16*BOARD_SQUARE['spacer'] + 8*BOARD_SQUARE['width'], anchor=W, window=roll_die_button, width=2 * BOARD_SQUARE['width'] + BOARD_SQUARE['spacer'], height=BOARD_SQUARE['width']/2)
 
     canvas.pack(fill=NONE)
+
+
+def start_new_game(window: Tk):
+    """Function to kill the current game and start a new one."""
+    window.destroy()
+    backend.main()
 
 
 def next_player_turn(canvas: Canvas, player_turn_label: Label, game_settings: dict):

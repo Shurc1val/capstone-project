@@ -4,7 +4,7 @@ from PIL import Image, ImageTk
 from tkinter.font import Font
 
 from userproof_inputs import ask_user_for_number, ask_user_for_specific_inputs
-from trs_graphics import *
+import trs_graphics
 
 
 def main():
@@ -22,10 +22,10 @@ def main():
 
     game_settings = {'colours': [], 'board': [[]
                                               for i in range(28)], 'die_roll': 0, 'finished_tokens': []}
-    new_game_pop_up_players_and_tokens(window, game_settings)
+    trs_graphics.new_game_pop_up_players_and_tokens(window, game_settings)
 
-    new_game_pop_up_colours(window, game_settings, possible_colours)
-    draw_board(window, game_settings)
+    trs_graphics.new_game_pop_up_colours(window, game_settings, possible_colours)
+    trs_graphics.draw_board(window, game_settings)
 
     window.mainloop()
 
