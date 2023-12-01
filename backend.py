@@ -3,7 +3,6 @@ from tkinter import *
 from PIL import Image, ImageTk
 from tkinter.font import Font
 
-from userproof_inputs import ask_user_for_number, ask_user_for_specific_inputs
 import trs_graphics
 
 
