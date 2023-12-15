@@ -34,6 +34,8 @@ GAME = {
 
 PLAYERS = []
 
+GRAPHICS = {}
+
 
 def find_counter_on_board(counter_ID: int) -> int:
     """Function to find the index of the square on board with the given counter id in it."""
@@ -91,11 +93,13 @@ def new_game_pop_up_players_and_tokens(window):
 
 def get_colour_selection(pop_up: Toplevel, colour_menu: Listbox):
     """Function to declare the players of the game by user's colour choice."""
+    global PLAYERS
     for i in colour_menu.curselection():
         PLAYERS.append({
             'colour': colour_menu.get(i),
             'die_roll': 0
         })
+    PLAYERS = PLAYERS[::-1]
     pop_up.destroy()
     pop_up.quit()
 
@@ -179,6 +183,7 @@ def join_game_pop_up_ids(window):
     """Function to allow player to enter game id to join a game."""
 
     def get_game_ID():
+        global GAME
         GAME['id'] = game_ID_field.get(1.0, "end-1c")
         pop_up.destroy()
         pop_up.quit()
@@ -255,7 +260,7 @@ def limit_colour_selection(colour_menu: Listbox, previous_selection: list[int], 
         previous_selection.pop()
 
 
-def counter_clicked_on(canvas: Canvas, player_turn_label: Label, *args):
+def counter_clicked_on(canvas: Canvas, *args):
     """Function called when a counter is clicked on."""
     counter_id = list(canvas.find_withtag("current"))[0]
     current_index = find_counter_on_board(counter_id)
@@ -274,8 +279,11 @@ def counter_clicked_on(canvas: Canvas, player_turn_label: Label, *args):
         if check_win(PLAYERS[0]['colour']):
             pop_up_message(title="Winner!",
                            message=f"Congratulations {PLAYERS[0]['colour']} player,\nyou've won!!!", button_text="Okay")
-        next_player_turn(canvas, player_turn_label)
+        next_player_turn(canvas)
         update_server()
+        wait_for_server(canvas)
+
+        
 
 
 def pop_up_message(title: str, message: str, button_text: str):
@@ -420,6 +428,7 @@ def initiate_board(window: Tk) -> Canvas:
     """Function to initialise the game for the start of a game."""
     global PLAYERS
     global GAME
+    global GRAPHICS
     GAME['board'] = [[] for i in range(28)]
 
     canvas = Canvas(window, width=CANVAS['width'],
@@ -456,18 +465,16 @@ def initiate_board(window: Tk) -> Canvas:
                 count += 1
 
     # Draw player turn label text
-    player_turn_label_text = Label(canvas, text="Player turn:", font=Font(
+    GRAPHICS['player_turn_label_text'] = Label(canvas, text="Player turn:", font=Font(
         family="Times New Roman", size=20), background="black", foreground="white", highlightthickness=0)
-    player_turn_label_text.place(x=GAP_FROM_EDGE + BOARD_SQUARE['spacer'], y=2 *
+    GRAPHICS['player_turn_label_text'].place(x=GAP_FROM_EDGE + BOARD_SQUARE['spacer'], y=2 *
                             GAP_FROM_TOP + 8*(BOARD_SQUARE['spacer']+BOARD_SQUARE['width']), anchor=W)
 
-    PLAYERS = PLAYERS[::-1]
-
     # Draw player turn label
-    player_turn_label_colour = Label(canvas, text = PLAYERS[0]['colour'].title(),
+    GRAPHICS['player_turn_label_colour'] = Label(canvas, text = PLAYERS[0]['colour'].title(),
                                      font = Font(family="Times New Roman", size=25),
                                      background = "black", foreground = PLAYERS[0]['colour'], highlightthickness = 0)
-    player_turn_label_colour.place(x=GAP_FROM_EDGE + BOARD_SQUARE['spacer'] + 100, y=2 *
+    GRAPHICS['player_turn_label_colour'].place(x=GAP_FROM_EDGE + BOARD_SQUARE['spacer'] + 100, y=2 *
                             GAP_FROM_TOP + 8*(BOARD_SQUARE['spacer']+BOARD_SQUARE['width']), anchor=W)
 
     count = 0
@@ -485,7 +492,7 @@ def initiate_board(window: Tk) -> Canvas:
             GAME['board'][0].append(canvas.create_oval(x, y, x+COUNTER_DIAMETER, y+COUNTER_DIAMETER,
                                                     fill=player['colour'].lower(), tags=f"{player['colour']}"))
             canvas.tag_bind(GAME['board'][0][-1], "<Button-1>",
-                            lambda *args: counter_clicked_on(canvas, player_turn_label_colour, GAME, PLAYERS, *args))
+                            lambda *args: counter_clicked_on(canvas, GAME, PLAYERS, *args))
             count += 1
 
     roman_mosaic = Image.open(os.path.join("images", "bc.png"))
@@ -508,7 +515,7 @@ def initiate_board(window: Tk) -> Canvas:
         BOARD_SQUARE['spacer']+BOARD_SQUARE['width']) + BOARD_SQUARE['width']/2 + 3*BOARD_SQUARE['spacer'], anchor=W, window=quit_button, width=2 * BOARD_SQUARE['width'] + BOARD_SQUARE['spacer'], height=BOARD_SQUARE['width']/2)
 
     roll_die_button = Button(canvas, bg="white", fg="black",
-                             text="Roll Die", command=lambda: roll_die_animation(canvas, 10, player_turn_label_colour))
+                             text="Roll Die", command=lambda: roll_die_animation(canvas, 10))
     roll_die_button_window = canvas.create_window(GAP_FROM_EDGE + 2*BOARD_SQUARE['spacer'], 2 *
                                                   GAP_FROM_TOP + 16*BOARD_SQUARE['spacer'] + 8*BOARD_SQUARE['width'], anchor=W, window=roll_die_button, width=2 * BOARD_SQUARE['width'] + BOARD_SQUARE['spacer'], height=BOARD_SQUARE['width']/2)
 
@@ -536,20 +543,21 @@ def start_new_game(window: Tk):
     main()
 
 
-def next_player_turn(canvas: Canvas, player_turn_label: Label):
+def next_player_turn(canvas: Canvas):
     """Function to change the current player turn to the next one in the player list."""
     PLAYERS[0]['die_roll'] = 0  # Reset player's die roll
     PLAYERS.append(PLAYERS.pop(0))
-    display_player_turn(canvas, player_turn_label, PLAYERS[0]['colour'])
+    display_player_turn(canvas)
 
 
-def display_player_turn(canvas: Canvas, player_turn_label: Label, player_colour: str):
+def display_player_turn(canvas: Canvas):
     """Function to update the current player turn shown on main window."""
-    player_turn_label.config(text=player_colour, foreground=player_colour)
+    global GRAPHICS
+    GRAPHICS['player_turn_label_colour'].config(text=PLAYER, foreground=PLAYER)
     canvas.update()
 
 
-def roll_die_animation(canvas: Canvas, time_period_ms: int, player_turn_label: Label):
+def roll_die_animation(canvas: Canvas, time_period_ms: int):
     """
     Recursive function to show a rolling die and pick random number between 1 and 6 when roll die
     button is clicked on.
@@ -566,14 +574,14 @@ def roll_die_animation(canvas: Canvas, time_period_ms: int, player_turn_label: L
     canvas.update()
     if time_period_ms < 150:
         canvas.after(time_period_ms,
-                     lambda: roll_die_animation(canvas, int(1.2*time_period_ms), player_turn_label))
+                     lambda: roll_die_animation(canvas, int(1.2*time_period_ms)))
     else:
         PLAYERS[0]['die_roll'] = die_number
         if not check_if_moves_exist(canvas, PLAYERS[0]):
             # No moves exist
             pop_up_message(title="OH DEAR",
                         message="No moves available - sorry", button_text="Okay")
-            next_player_turn(canvas, player_turn_label)
+            next_player_turn(canvas)
             PLAYERS[0]['die_roll'] = 0
 
 
@@ -626,24 +634,52 @@ def join_game():
 
 def update_server():
     """Function to update ec2 server based on local game state."""
-    global GAME
-    requests.post(f"{GAME['ec2_url']}/update", json={'game': GAME, 'players': PLAYERS})
+    response = requests.post(f"{GAME['ec2_url']}/update", json={
+        'game': GAME,
+        'players': PLAYERS,
+        'player': PLAYER
+        })
+    print(response.status_code)
+    print(response.text)
+    
 
 
 def update_local():
     global GAME
     global PLAYERS
+
     response = requests.get(f"{GAME['ec2_url']}/update")
     if response.status_code != 200:
         return response.json
     
     server_state = response.json()
-    GAME['board'] = deepcopy(server_state['game']['board'])
-    GAME['finished_tokens'] = deepcopy(server_state['game']['finished_tokens'])
-    GAME['number_of_players']: server_state['game']['number_of_players']
-    GAME['counters_per_player']: server_state['game']['counters_per_player']
+    GAME['number_of_players']= server_state['game']['number_of_players']
+    GAME['counters_per_player']= server_state['game']['counters_per_player']
     GAME['total_number_of_counters'] = GAME['number_of_players'] * GAME['counters_per_player']
-    PLAYERS = deepcopy(server_state['players'])
+
+    server_board = server_state['game']['board']
+    if (GAME['board'] != server_board) or (PLAYERS != server_state['players']):
+        GAME['board'] = deepcopy(server_board)
+        GAME['finished_tokens'] = deepcopy(server_state['game']['finished_tokens'])
+        PLAYERS = deepcopy(server_state['players'])
+        return True
+    
+    return False
+
+
+def wait_for_server(canvas: Canvas):
+    for widget in canvas.winfo_children():
+        widget.configure(state='disable')
+        GRAPHICS['player_turn_label_colour'].configure(state='normal')
+        GRAPHICS['player_turn_label_text'].configure(state='normal')
+
+    while PLAYERS[0]['colour'] != PLAYER:
+        if update_local():
+            draw_board(canvas)
+            display_player_turn(canvas)
+
+    for widget in canvas.winfo_children():
+        widget.configure(state='normal')
 
 
 def main():
@@ -675,18 +711,13 @@ def main():
     else:
         join_game_pop_up_ids(window)
         join_game()
-
-
-    update_local()
-    print(GAME)
+        update_local()
+    
     canvas = initiate_board(window)
 
     draw_board(canvas)
 
-    while PLAYERS[0]['colour'] != PLAYER:
-        print(PLAYERS[0]['colour'], PLAYER)
-        update_local()
-        draw_board(canvas)
+    wait_for_server(canvas)
 
     window.mainloop()
 
