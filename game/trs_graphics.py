@@ -19,11 +19,13 @@ GAP_FROM_EDGE = (CANVAS['width'] - NUM_SQUARES *
 GAP_FROM_TOP = GAP_FROM_EDGE
 COUNTER_DIAMETER = 20
 
-ec2_url = ""
+PLAYER = ""
 
 POSSIBLE_COLOURS = ["Blue", "Green", "Red", "Purple", "Gold"]
 
 GAME = {
+    'id': -1,
+    'ec2_url': None,
     'number_of_players': 0,
     'counters_per_player': 0,
     'board': [[] for i in range(28)],
@@ -113,6 +115,7 @@ def new_game_pop_up_colours(window):
     pop_up = Toplevel(window, bg="white")
     pop_up.geometry("260x110")
     pop_up.title("New game")
+    pop_up.attributes('-topmost', 'true')
 
     Label(pop_up, text=f"Please choose {number_words[GAME['number_of_players']]} colours:", font=(
         'Times'), bg="white", fg="black").place(x=10, y=10)
@@ -134,6 +137,106 @@ def new_game_pop_up_colours(window):
     play_game_button.config(
         bg="red", fg="black", borderwidth=5, highlightbackground="white")
     play_game_button.place(x=25, y=40)
+
+    window.mainloop()
+
+
+def new_or_join_game_pop_up(window):
+    """Function to allow player to choose whether to start a new game or join one."""
+
+    def new_game():
+        GAME['id'] = -1
+        pop_up.destroy()
+        pop_up.quit()
+
+    def join_game():
+        pop_up.destroy()
+        pop_up.quit()
+
+    pop_up = Toplevel(window, bg="white")
+    pop_up.geometry("260x80")
+    pop_up.title("Join Game")
+    pop_up.attributes('-topmost', 'true')
+
+    new_game_button = Button(pop_up, bg="white", fg="white",
+                              text="New Game", command=lambda: new_game())
+    new_game_button.config(
+        bg="red", fg="black", borderwidth=5, highlightbackground="white", width=22)
+    
+    new_game_button.place(x=9, y=3)
+
+    join_game_button = Button(pop_up, bg="white", fg="white",
+                              text="Join Game", command=lambda: join_game())
+    join_game_button.config(
+        bg="red", fg="black", borderwidth=5, highlightbackground="white", width=22)
+    
+    join_game_button.place(x=9, y=36)
+
+    window.mainloop()
+
+
+def join_game_pop_up_ids(window):
+    """Function to allow player to enter game id to join a game."""
+
+    def get_game_ID():
+        GAME['id'] = game_ID_field.get(1.0, "end-1c")
+        pop_up.destroy()
+        pop_up.quit()
+
+    pop_up = Toplevel(window, bg="white")
+    pop_up.geometry("260x80")
+    pop_up.title("Join Game")
+    pop_up.attributes('-topmost', 'true')
+
+    Label(pop_up, text=f"Please enter game ID:", font=(
+        'Times'), bg="white", fg="black").place(x=10, y=10)
+
+    game_ID_field = Text(pop_up, width=16, height=1)
+    game_ID_field.pack()
+
+    game_ID_field.config(bg="white", fg="black")
+    game_ID_field.place(x=130, y=12)
+
+    join_game_button = Button(pop_up, bg="white", fg="white",
+                              text="Join Game", command=lambda: get_game_ID())
+    join_game_button.config(
+        bg="red", fg="black", borderwidth=5, highlightbackground="white")
+    
+    join_game_button.place(x=80, y=36)
+
+    window.mainloop()
+
+
+def server_address_pop_up(window):
+    """Function to allow player to enter game server to join or start a game."""
+
+    def get_server():
+        global GAME
+        GAME['ec2_url'] = server_address_field.get(1.0, "end-1c")
+        print(GAME['ec2_url'])
+        pop_up.destroy()
+        pop_up.quit()
+
+    pop_up = Toplevel(window, bg="white")
+    pop_up.geometry("260x80")
+    pop_up.title("Server Details")
+    pop_up.attributes('-topmost', 'true')
+
+    Label(pop_up, text=f"Please server URL:", font=(
+        'Times'), bg="white", fg="black").place(x=10, y=10)
+
+    server_address_field = Text(pop_up, width=16, height=1)
+    server_address_field.pack()
+
+    server_address_field.config(bg="white", fg="black")
+    server_address_field.place(x=130, y=12)
+
+    add_server_button = Button(pop_up, bg="white", fg="white",
+                              text="Add Server", command=lambda: get_server())
+    add_server_button.config(
+        bg="red", fg="black", borderwidth=5, highlightbackground="white")
+    
+    add_server_button.place(x=80, y=36)
 
     window.mainloop()
 
@@ -172,6 +275,7 @@ def counter_clicked_on(canvas: Canvas, player_turn_label: Label, *args):
             pop_up_message(title="Winner!",
                            message=f"Congratulations {PLAYERS[0]['colour']} player,\nyou've won!!!", button_text="Okay")
         next_player_turn(canvas, player_turn_label)
+        update_server()
 
 
 def pop_up_message(title: str, message: str, button_text: str):
@@ -179,10 +283,11 @@ def pop_up_message(title: str, message: str, button_text: str):
     pop_up = Tk()
     pop_up.geometry("260x110")
     pop_up.title(title)
+    pop_up.attributes('-topmost', 'true')
     label = Label(pop_up, text=message)
     label.pack(side="top", padx=10, pady=10)
     okay_button = Button(pop_up, text=button_text, command=pop_up.destroy)
-    okay_button.pack(side='bottom')
+    okay_button.pack(side='bottom', pady=10)
 
 
 def validate_move(canvas: Canvas, current_index: int, current_player: dict) -> bool:
@@ -315,6 +420,7 @@ def initiate_board(window: Tk) -> Canvas:
     """Function to initialise the game for the start of a game."""
     global PLAYERS
     global GAME
+    GAME['board'] = [[] for i in range(28)]
 
     canvas = Canvas(window, width=CANVAS['width'],
                     height=CANVAS['height'], background="black")
@@ -420,6 +526,8 @@ def draw_board(canvas: Canvas):
                                                 total_number_of_counters = \
                                                     GAME['total_number_of_counters']))
                 canvas.moveto(piece, x, y)
+    
+    canvas.update()
 
 
 def start_new_game(window: Tk):
@@ -469,10 +577,6 @@ def roll_die_animation(canvas: Canvas, time_period_ms: int, player_turn_label: L
             PLAYERS[0]['die_roll'] = 0
 
 
-def player_turn():
-    pass
-
-
 def print_player_turn(canvas: Canvas):
     current_player_turn = Label(canvas, text="Player turn:", font=Font(
         family="Times New Roman", size=20), background="black", foreground="white")
@@ -495,36 +599,94 @@ def get_number_of_colour_on_square(canvas: Canvas, square: list[int], colour: st
     return counter_colours.count(colour)
 
 
+def get_new_game_ID():
+    return r.randint(10000, 99999)
+
+
+def server_new_game():
+    """Function to start a new game on the ec2 server."""
+    response = requests.post(f"{GAME['ec2_url']}/new_game", json={
+        'game': GAME,
+        'players': PLAYERS})
+    if response.status_code != 200:
+        print(response.text)
+        raise ValueError("Error connecting to the server!!")
+
+
+def join_game():
+    """Function to join a game on the ec2 server."""
+    global PLAYER
+    response = requests.post(f"{GAME['ec2_url']}/new_player", json={'game_id': GAME['id']})
+    if response.status_code != 200:
+        print(response.status_code)
+        print(response.text)
+        raise ValueError("Error connecting to the server!!")
+    PLAYER = response.json().get('player')
+
+
 def update_server():
     """Function to update ec2 server based on local game state."""
-    requests.post(f"{ec2_url}/update", json={'game': GAME, 'players': dictS})
+    global GAME
+    requests.post(f"{GAME['ec2_url']}/update", json={'game': GAME, 'players': PLAYERS})
 
 
 def update_local():
-    response = requests.get(f"{ec2_url}/update")
+    global GAME
+    global PLAYERS
+    response = requests.get(f"{GAME['ec2_url']}/update")
     if response.status_code != 200:
         return response.json
     
-    server_state = response.json
-    GAME = deepcopy(server_state['game'])
+    server_state = response.json()
+    GAME['board'] = deepcopy(server_state['game']['board'])
+    GAME['finished_tokens'] = deepcopy(server_state['game']['finished_tokens'])
+    GAME['number_of_players']: server_state['game']['number_of_players']
+    GAME['counters_per_player']: server_state['game']['counters_per_player']
+    GAME['total_number_of_counters'] = GAME['number_of_players'] * GAME['counters_per_player']
     PLAYERS = deepcopy(server_state['players'])
 
 
 def main():
     global GAME
+    GAME = {
+        'number_of_players': 0,
+        'counters_per_player': 0,
+        'board': [[] for i in range(28)],
+        'finished_tokens': []
+        }
     global PLAYERS
+    PLAYERS = []
+    
     window = Tk()
     window.title('The Roman Stones')
     window.geometry("720x800+10+20")
     window.configure(bg="black")
 
-    new_game_pop_up_players_and_tokens(window)
+    server_address_pop_up(window)
+    new_or_join_game_pop_up(window)
+    
+    if GAME.get('id', None) == -1:
+        new_game_pop_up_players_and_tokens(window)
+        new_game_pop_up_colours(window)
+        GAME['id'] = get_new_game_ID()
+        server_new_game()
+        join_game()
+        pop_up_message('New Game', f"Your game ID is: {GAME['id']}", 'Start Game')
+    else:
+        join_game_pop_up_ids(window)
+        join_game()
 
-    new_game_pop_up_colours(window)
 
+    update_local()
+    print(GAME)
     canvas = initiate_board(window)
 
     draw_board(canvas)
+
+    while PLAYERS[0]['colour'] != PLAYER:
+        print(PLAYERS[0]['colour'], PLAYER)
+        update_local()
+        draw_board(canvas)
 
     window.mainloop()
 
