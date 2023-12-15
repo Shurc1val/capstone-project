@@ -648,8 +648,9 @@ def update_local():
     global GAME
     global PLAYERS
 
-    response = requests.get(f"{GAME['ec2_url']}/update")
+    response = requests.get(f"{GAME['ec2_url']}/update", json={})
     if response.status_code != 200:
+        print(response.text)
         return response.json
     
     server_state = response.json()
@@ -712,7 +713,7 @@ def main():
         join_game_pop_up_ids(window)
         join_game()
         update_local()
-    
+    print(PLAYERS)
     canvas = initiate_board(window)
 
     draw_board(canvas)

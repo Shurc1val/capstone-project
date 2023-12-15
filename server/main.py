@@ -31,7 +31,7 @@ def new_game_endpoint():
     players = request.json.get('players', [])
     players = deepcopy(players)
 
-    game['id'] = request_dict['game']['id']
+    game['id'] = int(request_dict['game']['id'])
     game['state'] = 1
 
     game['number_of_players'] = request_dict['game']['number_of_players']
@@ -60,10 +60,10 @@ def update_endpoint():
         }, 200
 
     if request.method == "POST":
-        if request_dict.get('game', {}).get('id', 0) != game.get('id', 0):
-            return {'error': "Invalid IP address"}, 401
-        if request_dict.get('player', '') != players[0]:
-            return {'error': "Not your turn"}, 401
+        if int(request_dict.get('game', {}).get('id', 0)) != int(game.get('id', 0)):
+            return {'error': "Invalid game id", 'ids': [request_dict.get('game', {}).get('id', 0), game.get('id', 0)]}, 401
+        if request_dict.get('player', '') != players[0].get('colour', ''):
+            return {'error': "Not your turn", 'players': players}, 401
 
         game['number_of_players'] = deepcopy(request_dict['game']['number_of_players'])
         game['counters_per_player'] = deepcopy(request_dict['game']['counters_per_player'])
